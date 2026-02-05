@@ -45,8 +45,10 @@ impl GitRepo {
 
     fn load_statuses(&mut self, root: &Path) {
         // Get modified/staged/untracked files
+        // Use -unormal instead of -uall for better performance in large repos
+        // -unormal shows untracked files and directories (but not contents of untracked dirs)
         if let Ok(output) = Command::new("git")
-            .args(["status", "--porcelain", "-uall"])
+            .args(["status", "--porcelain", "-unormal"])
             .current_dir(root)
             .output()
         {
@@ -73,9 +75,9 @@ impl GitRepo {
             }
         }
 
-        // Get ignored files
+        // Get ignored files (without -uall to avoid performance issues)
         if let Ok(output) = Command::new("git")
-            .args(["status", "--porcelain", "--ignored", "-uall"])
+            .args(["status", "--porcelain", "--ignored", "-unormal"])
             .current_dir(root)
             .output()
         {

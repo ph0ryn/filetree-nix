@@ -36,27 +36,33 @@ impl FileNode {
 
         self.children.clear();
         let mut entries: Vec<_> = fs::read_dir(&self.path)?
-            .filter_map(|e| e.ok())
-            .filter(|e| {
-                show_hidden
-                    || e.file_name()
-                        .to_str()
-                        .map(|s| !s.starts_with('.'))
-                        .unwrap_or(true)
+            .filter_map(|e| {
+                let entry = e.ok()?;
+                // Filter and get metadata in one pass
+                let is_hidden = entry
+                    .file_name()
+                    .to_str()
+                    .map(|s| s.starts_with('.'))
+                    .unwrap_or(false);
+                if !show_hidden && is_hidden {
+                    return None;
+                }
+                // Pre-fetch file_type to avoid is_dir() syscalls during sort
+                let file_type = entry.file_type().ok()?;
+                Some((entry, file_type.is_dir()))
             })
             .collect();
 
-        entries.sort_by(|a, b| {
-            let a_is_dir = a.path().is_dir();
-            let b_is_dir = b.path().is_dir();
-            match (a_is_dir, b_is_dir) {
-                (true, false) => std::cmp::Ordering::Less,
-                (false, true) => std::cmp::Ordering::Greater,
+        // Sort by: directories first, then by name (no syscalls needed)
+        entries.sort_by(|(a, a_is_dir), (b, b_is_dir)| {
+            match (*b_is_dir, *a_is_dir) {
+                (true, false) => std::cmp::Ordering::Greater,
+                (false, true) => std::cmp::Ordering::Less,
                 _ => a.file_name().cmp(&b.file_name()),
             }
         });
 
-        for entry in entries {
+        for (entry, _) in entries {
             self.children
                 .push(FileNode::new(entry.path(), self.depth + 1));
         }
