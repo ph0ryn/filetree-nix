@@ -54,13 +54,13 @@ impl FileNode {
             .collect();
 
         // Sort by: directories first, then by name (no syscalls needed)
-        entries.sort_by(|(a, a_is_dir), (b, b_is_dir)| {
-            match (*b_is_dir, *a_is_dir) {
+        entries.sort_by(
+            |(a, a_is_dir), (b, b_is_dir)| match (*b_is_dir, *a_is_dir) {
                 (true, false) => std::cmp::Ordering::Greater,
                 (false, true) => std::cmp::Ordering::Less,
                 _ => a.file_name().cmp(&b.file_name()),
-            }
-        });
+            },
+        );
 
         for (entry, _) in entries {
             self.children
