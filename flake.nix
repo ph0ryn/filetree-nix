@@ -22,35 +22,40 @@
         };
     in
     {
+      overlays.default = final: _prev: {
+        filetree = final.rustPlatform.buildRustPackage {
+          pname = "filetree";
+          version = "0.3.5";
+
+          src = ./.;
+          cargoLock.lockFile = ./Cargo.lock;
+
+          nativeBuildInputs = final.lib.optionals final.stdenv.hostPlatform.isLinux [
+            final.pkg-config
+          ];
+
+          buildInputs = final.lib.optionals final.stdenv.hostPlatform.isLinux [
+            final.xorg.libX11
+            final.xorg.libxcb
+          ];
+
+          meta = {
+            description = "A fast, lightweight file explorer TUI with VSCode-like interface and Vim keybindings.";
+            homepage = "https://github.com/ph0ryn/filetree-nix";
+            license = final.lib.licenses.mit;
+            mainProgram = "ft";
+          };
+        };
+      };
+
       packages = forAllSystems (
         system:
         let
-          pkgs = pkgsFor system;
+          pkgs = (pkgsFor system).extend self.overlays.default;
         in
         {
-          default = pkgs.rustPlatform.buildRustPackage {
-            pname = "filetree";
-            version = "0.3.5";
-
-            src = ./.;
-            cargoLock.lockFile = ./Cargo.lock;
-
-            nativeBuildInputs = pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [
-              pkgs.pkg-config
-            ];
-
-            buildInputs = pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [
-              pkgs.xorg.libX11
-              pkgs.xorg.libxcb
-            ];
-
-            meta = {
-              description = "A fast, lightweight file explorer TUI with VSCode-like interface and Vim keybindings.";
-              homepage = "https://github.com/ph0ryn/filetree-nix";
-              license = pkgs.lib.licenses.mit;
-              mainProgram = "ft";
-            };
-          };
+          inherit (pkgs) filetree;
+          default = self.packages.${system}.filetree;
         }
       );
 
